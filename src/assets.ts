@@ -119,7 +119,6 @@ function extractTrackObjects(track: THREE.Object3D): ExtractedObjects {
   const checkpoints: THREE.Mesh[] = [];
   let startLine: THREE.Mesh | null = null;
   let roadMesh: THREE.Mesh | null = null;
-  let checkpoint01: THREE.Object3D | null = null;
 
   track.traverse((child) => {
     const mesh = child as THREE.Mesh;
@@ -134,7 +133,6 @@ function extractTrackObjects(track: THREE.Object3D): ExtractedObjects {
 
     if (child.name.startsWith('Checkpoint_')) {
       if (mesh.isMesh) checkpoints.push(mesh);
-      if (child.name === 'Checkpoint_01') checkpoint01 = child;
     }
 
     if (child.name === 'StartLine') {
@@ -144,7 +142,7 @@ function extractTrackObjects(track: THREE.Object3D): ExtractedObjects {
 
   checkpoints.sort((a, b) => a.name.localeCompare(b.name));
 
-  const spawn = computeSpawn(startLine, checkpoint01);
+  const spawn = computeSpawn(startLine, roadMesh);
 
   console.log(
     `Track loaded: ${walls.length} walls, road=${!!roadMesh}, ${checkpoints.length} checkpoints, startLine=${!!startLine}`
@@ -225,7 +223,7 @@ function addSpaceTrackFx(
 
 function computeSpawn(
   startLine: THREE.Object3D | null,
-  checkpoint01: THREE.Object3D | null
+  roadMesh: THREE.Mesh | null
 ): SpawnInfo {
   if (!startLine) {
     return { position: new THREE.Vector3(0, 0.1, 0), heading: Math.PI };
@@ -235,13 +233,26 @@ function computeSpawn(
   const startCenter = startBox.getCenter(new THREE.Vector3());
 
   let heading = Math.PI;
-  if (checkpoint01) {
-    const cp1Box = new THREE.Box3().setFromObject(checkpoint01);
-    const cp1Center = cp1Box.getCenter(new THREE.Vector3());
-    heading = Math.atan2(
-      cp1Center.x - startCenter.x,
-      cp1Center.z - startCenter.z
-    );
+  const centerline = roadMesh ? extractRoadCenterline(roadMesh) : [];
+  if (centerline.length >= 3) {
+    let nearestIndex = 0;
+    let nearestDistance = Infinity;
+    const startPoint = new THREE.Vector2(startCenter.x, startCenter.z);
+
+    for (let i = 0; i < centerline.length; i++) {
+      const distance = centerline[i].distanceToSquared(startPoint);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = i;
+      }
+    }
+
+    const previous = centerline[
+      (nearestIndex - 1 + centerline.length) % centerline.length
+    ];
+    const next = centerline[(nearestIndex + 1) % centerline.length];
+    const tangent = next.clone().sub(previous).normalize();
+    heading = Math.atan2(tangent.x, tangent.y);
   }
 
   // Keep spawn Y from the start line (may be elevated)

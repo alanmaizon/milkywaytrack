@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 
-const REPO_BASE = '/poncho/';
+const REPO_BASE = '/milkywaytrack/';
 
 export default defineConfig(({ command }) => ({
   base: command === 'serve' ? '/' : REPO_BASE,

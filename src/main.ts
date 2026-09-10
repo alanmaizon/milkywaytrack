@@ -23,7 +23,7 @@ async function main() {
     const dt = Math.min(timer.getDelta(), 0.05);
 
     carController.update(dt);
-    boundary.constrain(carController);
+    boundary.constrain(carController, dt);
     cameraController.update(dt);
 
     // Keep shadow camera centered on the car
