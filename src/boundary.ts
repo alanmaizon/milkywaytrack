@@ -33,7 +33,7 @@ export class BoundarySystem {
     }
   }
 
-  constrain(carController: { speed: number; heading: number }) {
+  constrain(carController: { speed: number; heading: number }, dt: number) {
     const pos = this.car.position;
     // Use car's actual Y so rays hit walls at the correct elevation
     const origin = new THREE.Vector3(pos.x, pos.y + 1.0, pos.z);
@@ -58,6 +58,19 @@ export class BoundarySystem {
           normal.transformDirection(hit.object.matrixWorld);
           normal.y = 0;
           normal.normalize();
+
+          if (normal.dot(origin.clone().sub(hit.point)) < 0) {
+            normal.negate();
+          }
+
+          const movement = new THREE.Vector3(
+            Math.sin(carController.heading) * carController.speed * dt,
+            0,
+            Math.cos(carController.heading) * carController.speed * dt
+          );
+          if (movement.lengthSq() > 0 && movement.dot(normal) >= 0) {
+            continue;
+          }
 
           totalPushX += normal.x * (penetration + PUSH_MARGIN);
           totalPushZ += normal.z * (penetration + PUSH_MARGIN);
